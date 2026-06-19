@@ -20,6 +20,8 @@ Wait ~90s, then open:
 
 ## 1. The healthy baseline (30s)
 
+![Overview tab](screenshots/control-center-overview.png)
+
 On the **Overview** tab: three services, error budgets, the 28-day compliance
 graph, and the live health map. Note `payments-worker` is already *breaching* its
 99.5% target — the mock gateway flakes ~8% deterministically, so the SLO is

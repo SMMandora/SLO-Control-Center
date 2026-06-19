@@ -12,6 +12,12 @@ Built as six decomposed sub-projects; see the specs in
 [`docs/superpowers/plans`](docs/superpowers/plans/), and the
 [demo walkthrough](docs/DEMO.md).
 
+![SLO Control Center — Overview tab with live SLOs, error budgets, 28-day compliance, service health map, and recent traces](docs/screenshots/control-center-overview.png)
+
+> Real screenshot from the running stack: `orders-api` healthy, `payments-worker`
+> breaching its 99.5% target (the mock gateway flakes ~8% by design), and a live
+> distributed trace feed.
+
 ## Architecture
 
 ```
@@ -81,6 +87,8 @@ Grafana), **Logs** (recent Loki lines with trace IDs), **Capacity** (per-contain
 CPU/mem/disk from cadvisor), and **Runbooks** (the `docs/runbooks/` markdown,
 rendered).
 
+![Services tab — per-service RED metrics, SLO status, and dependencies](docs/screenshots/control-center-services.png)
+
 Grafana ships 4 Grafonnet dashboards: **SLO Overview**, **Incident
 Investigation**, **Service Drilldown** (templated by service), and
 **Capacity / USE**.
@@ -118,6 +126,8 @@ http://localhost:8092/alerts).
 | `DiskSpaceLow` | container fs >90% (cadvisor) | warn | [docs/runbooks/disk-space.md](docs/runbooks/disk-space.md) |
 
 Alert rules are unit-tested with `promtool test rules` (`alerts.test.yml`).
+
+![Alerts tab — FastBurn firing on payments-worker, plus SlowBurn and DiskSpaceLow](docs/screenshots/control-center-alerts.png)
 
 ## Chaos scenarios
 
@@ -203,6 +213,8 @@ editing. Regenerate with `make dashboards` (needs
 `go install github.com/google/go-jsonnet/cmd/jsonnet@latest` and
 `github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest`). The committed
 `observability/grafana/dashboards/*.json` are the provisioned artifacts.
+
+![Grafana SLO Overview — Grafonnet-generated dashboard with availability, error-budget gauge, p95, and burn-rate panels](docs/screenshots/grafana-slo-overview.png)
 
 ## SLO definitions
 
