@@ -1,0 +1,42 @@
+groups:
+  - name: orders-api-slo
+    interval: 15s
+    rules:
+      # SLI availability per window: good (non-5xx) / total
+      - record: slo:orders_api:availability:ratio_5m
+        expr: |
+          sum(rate(http_requests_total{job="orders-api",status!~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{job="orders-api"}[5m]))
+      - record: slo:orders_api:availability:ratio_1h
+        expr: |
+          sum(rate(http_requests_total{job="orders-api",status!~"5.."}[1h]))
+          / sum(rate(http_requests_total{job="orders-api"}[1h]))
+      - record: slo:orders_api:availability:ratio_6h
+        expr: |
+          sum(rate(http_requests_total{job="orders-api",status!~"5.."}[6h]))
+          / sum(rate(http_requests_total{job="orders-api"}[6h]))
+      - record: slo:orders_api:availability:ratio_24h
+        expr: |
+          sum(rate(http_requests_total{job="orders-api",status!~"5.."}[24h]))
+          / sum(rate(http_requests_total{job="orders-api"}[24h]))
+      - record: slo:orders_api:availability:ratio_28d
+        expr: |
+          sum(rate(http_requests_total{job="orders-api",status!~"5.."}[28d]))
+          / sum(rate(http_requests_total{job="orders-api"}[28d]))
+      # Burn rate per window: (1 - SLI_w) / (1 - target); target 0.999 => budget 0.001
+      - record: slo:orders_api:burnrate_1h
+        expr: (1 - slo:orders_api:availability:ratio_1h) / 0.001
+      - record: slo:orders_api:burnrate_6h
+        expr: (1 - slo:orders_api:availability:ratio_6h) / 0.001
+      - record: slo:orders_api:burnrate_24h
+        expr: (1 - slo:orders_api:availability:ratio_24h) / 0.001
+      # Error budget remaining fraction over 28d, clamped to [0,1]
+      - record: slo:orders_api:error_budget_remaining_ratio
+        expr: clamp_max(clamp_min(1 - ((1 - slo:orders_api:availability:ratio_28d) / 0.001), 0), 1)
+      # Total requests over 28d (for absolute budget count)
+      - record: slo:orders_api:requests_total_28d
+        expr: sum(increase(http_requests_total{job="orders-api"}[28d]))
+      # p95 latency (5m)
+      - record: slo:orders_api:latency_p95_seconds
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="orders-api"}[5m])))

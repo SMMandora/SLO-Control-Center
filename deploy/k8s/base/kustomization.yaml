@@ -1,0 +1,61 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: slo
+
+resources:
+  - namespace.yaml
+  - data.yaml
+  - apps.yaml
+  - bff-frontend.yaml
+  - monitoring.yaml
+  - telemetry.yaml
+  - load.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+# Configs are the single source of truth from observability/** and docs/runbooks.
+# Requires `kustomize build --load-restrictor LoadRestrictionsNone` (see Makefile).
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml=../../../observability/prometheus/prometheus.yml
+  - name: prometheus-rules
+    files:
+      - ../../../observability/prometheus/rules/orders-api.slo.rules.yml
+      - ../../../observability/prometheus/rules/mesh.slo.rules.yml
+      - ../../../observability/prometheus/rules/alerts.yml
+  - name: alertmanager-config
+    files:
+      - alertmanager.yml=../../../observability/alertmanager/alertmanager.yml
+  - name: grafana-datasources
+    files:
+      - ../../../observability/grafana/provisioning/datasources/prometheus.yml
+  - name: grafana-dashboards-provider
+    files:
+      - dashboards.yml=../../../observability/grafana/provisioning/dashboards/dashboards.yml
+  - name: grafana-dashboards
+    files:
+      - ../../../observability/grafana/dashboards/slo-overview.json
+      - ../../../observability/grafana/dashboards/incident-investigation.json
+      - ../../../observability/grafana/dashboards/service-drilldown.json
+      - ../../../observability/grafana/dashboards/capacity-use.json
+  - name: tempo-config
+    files:
+      - tempo.yaml=../../../observability/tempo/tempo.yaml
+  - name: loki-config
+    files:
+      - loki.yaml=../../../observability/loki/loki.yaml
+  - name: otel-config
+    files:
+      - otel-collector-config.yaml=../../../observability/otel/otel-collector-config.yaml
+  - name: k6-script
+    files:
+      - orders-load.js=../../../load/k6/orders-load.js
+  - name: runbooks
+    files:
+      - ../../../docs/runbooks/fast-burn.md
+      - ../../../docs/runbooks/slow-burn.md
+      - ../../../docs/runbooks/service-down.md
+      - ../../../docs/runbooks/disk-space.md

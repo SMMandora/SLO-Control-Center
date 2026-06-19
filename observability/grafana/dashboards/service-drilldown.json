@@ -1,0 +1,205 @@
+{
+   "panels": [
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "max": 100,
+               "min": 0,
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 0,
+            "y": 0
+         },
+         "id": 1,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:error_budget_remaining_ratio * 100"
+            }
+         ],
+         "title": "Error Budget Remaining",
+         "type": "gauge"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "unit": "ms"
+            }
+         },
+         "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 8,
+            "y": 0
+         },
+         "id": 2,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:latency_p95_seconds * 1000"
+            }
+         ],
+         "title": "p95 Latency",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 16,
+            "y": 0
+         },
+         "id": 3,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:requests_total_28d"
+            }
+         ],
+         "title": "Requests (28d)",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 6
+         },
+         "id": 4,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:burnrate_1h",
+               "legendFormat": "1h"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:burnrate_6h",
+               "legendFormat": "6h"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:$service:burnrate_24h",
+               "legendFormat": "24h"
+            }
+         ],
+         "title": "Burn Rate (1h / 6h / 24h)",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "max": 1,
+               "min": 0
+            }
+         },
+         "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 14
+         },
+         "id": 5,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "up{job=~\"orders-api|payments-worker|notification-svc|mock-gateway|mock-receiver\"}",
+               "legendFormat": "{{job}}"
+            }
+         ],
+         "title": "Dependency Liveness (up)",
+         "type": "timeseries"
+      }
+   ],
+   "refresh": "15s",
+   "schemaVersion": 36,
+   "templating": {
+      "list": [
+         {
+            "current": {
+               "selected": false,
+               "text": "orders_api",
+               "value": "orders_api"
+            },
+            "name": "service",
+            "options": [
+               {
+                  "selected": true,
+                  "text": "orders_api",
+                  "value": "orders_api"
+               },
+               {
+                  "selected": false,
+                  "text": "payments_worker",
+                  "value": "payments_worker"
+               },
+               {
+                  "selected": false,
+                  "text": "notification_svc",
+                  "value": "notification_svc"
+               }
+            ],
+            "query": "orders_api : orders_api,payments_worker : payments_worker,notification_svc : notification_svc",
+            "type": "custom"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-6h",
+      "to": "now"
+   },
+   "timezone": "utc",
+   "title": "Service Drilldown",
+   "uid": "service-drilldown"
+}

@@ -1,0 +1,27 @@
+route:
+  receiver: warnings
+  group_by: ['alertname', 'service']
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 1h
+  routes:
+    - matchers: ['severity="page"']
+      receiver: pager
+    - matchers: ['severity="ticket"']
+      receiver: ticketing
+    - matchers: ['severity="warn"']
+      receiver: warnings
+
+receivers:
+  - name: pager
+    webhook_configs:
+      - url: 'http://alert-receiver:8092/page'
+        send_resolved: true
+  - name: ticketing
+    webhook_configs:
+      - url: 'http://alert-receiver:8092/ticket'
+        send_resolved: true
+  - name: warnings
+    webhook_configs:
+      - url: 'http://alert-receiver:8092/warn'
+        send_resolved: true

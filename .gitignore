@@ -1,0 +1,14 @@
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Go
+*.exe
+
+# Grafonnet vendored libs (regenerated via `make dashboards`)
+observability/grafana/jsonnet/vendor/
+
+# Env
+deploy/compose/.env
+frontend/.venv
+services/payments-worker/.venv/

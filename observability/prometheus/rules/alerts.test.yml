@@ -1,0 +1,68 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  # FastBurn fires when orders-api burn rate exceeds the 13.44 threshold for 2m.
+  - interval: 1m
+    input_series:
+      - series: 'slo:orders_api:burnrate_1h'
+        values: '20 20 20 20 20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: FastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: orders-api
+            exp_annotations:
+              summary: "orders-api fast error-budget burn"
+              description: "orders-api burning >2% of its 28d budget per hour (rate 20.0x)."
+              runbook_url: "docs/runbooks/fast-burn.md"
+
+  # Below threshold: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'slo:orders_api:burnrate_1h'
+        values: '5 5 5 5 5'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: FastBurn
+        exp_alerts: []
+
+  # ServiceDown fires after up==0 for >2m.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="payments-worker"}'
+        values: '0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: payments-worker
+            exp_annotations:
+              summary: "payments-worker is down"
+              description: "payments-worker has failed its health scrape for >2m."
+              runbook_url: "docs/runbooks/service-down.md"
+
+  # DiskSpaceLow fires when a container fs exceeds 90% for >5m.
+  - interval: 1m
+    input_series:
+      - series: 'container_fs_usage_bytes{name="orders-api"}'
+        values: '95 95 95 95 95 95 95'
+      - series: 'container_fs_limit_bytes{name="orders-api"}'
+        values: '100 100 100 100 100 100 100'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: DiskSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warn
+              name: orders-api
+            exp_annotations:
+              summary: "orders-api disk >90% full"
+              description: "Container orders-api filesystem usage is 95%."
+              runbook_url: "docs/runbooks/disk-space.md"

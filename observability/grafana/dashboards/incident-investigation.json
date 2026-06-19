@@ -1,0 +1,117 @@
+{
+   "panels": [
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "id": 1,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "sum(rate(payments_processed_total{status=\"failure\"}[5m]))",
+               "legendFormat": "payments failures/s"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "sum(rate(http_requests_total{job=\"orders-api\",status=~\"5..\"}[5m]))",
+               "legendFormat": "orders 5xx/s"
+            }
+         ],
+         "title": "Error Rate (per second)",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+         },
+         "id": 2,
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:orders_api:burnrate_1h",
+               "legendFormat": "orders-api"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:payments_worker:burnrate_1h",
+               "legendFormat": "payments-worker"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "Prometheus"
+               },
+               "expr": "slo:notification_svc:burnrate_1h",
+               "legendFormat": "notification-svc"
+            }
+         ],
+         "title": "Burn Rate (1h) by Service",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 16
+         },
+         "id": 3,
+         "options": {
+            "showTime": true
+         },
+         "pluginVersion": "v10.0.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "loki",
+                  "uid": "Loki"
+               },
+               "expr": "{level=\"error\"}"
+            }
+         ],
+         "title": "Error Logs (click trace_id → Tempo)",
+         "type": "logs"
+      }
+   ],
+   "refresh": "15s",
+   "schemaVersion": 36,
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timezone": "utc",
+   "title": "Incident Investigation",
+   "uid": "incident-investigation"
+}

@@ -1,0 +1,208 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  orders-api:
+    build: ../../services/orders-api
+    environment:
+      DATABASE_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      OTEL_SERVICE_NAME: orders-api
+      CHAOS_ERROR_RATE: ${CHAOS_ERROR_RATE:-0}
+      CHAOS_LATENCY_MS: ${CHAOS_LATENCY_MS:-0}
+      CHAOS_LATENCY_PCT: ${CHAOS_LATENCY_PCT:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  mock-gateway:
+    build: ../../services/mock-gateway
+    environment:
+      FAIL_PCT: ${GATEWAY_FAIL_PCT:-8}
+      LATENCY_MS: ${GATEWAY_LATENCY_MS:-0}
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      OTEL_SERVICE_NAME: mock-gateway
+
+  mock-receiver:
+    build: ../../services/mock-receiver
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      OTEL_SERVICE_NAME: mock-receiver
+
+  payments-worker:
+    build: ../../services/payments-worker
+    environment:
+      REDIS_URL: redis://redis:6379
+      GATEWAY_URL: http://mock-gateway:8090
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      OTEL_SERVICE_NAME: payments-worker
+    depends_on:
+      redis:
+        condition: service_healthy
+      mock-gateway:
+        condition: service_started
+
+  notification-svc:
+    build: ../../services/notification-svc
+    environment:
+      REDIS_URL: redis://redis:6379
+      RECEIVER_URL: http://mock-receiver:8091
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      OTEL_SERVICE_NAME: notification-svc
+    depends_on:
+      redis:
+        condition: service_healthy
+      mock-receiver:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../../observability/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../../observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"
+
+  loki:
+    image: grafana/loki:latest
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ../../observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:latest
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    volumes:
+      - ../../observability/promtail/promtail.yaml:/etc/promtail/promtail.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ../../observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    depends_on:
+      - alert-receiver
+
+  alert-receiver:
+    build: ../../services/alert-receiver
+    ports:
+      - "8092:8092"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    devices:
+      - /dev/kmsg
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../observability/prometheus/rules:/etc/prometheus/rules:ro
+      - prom-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+      - "--enable-feature=exemplar-storage"
+    ports:
+      - "9091:9090"
+    depends_on:
+      - orders-api
+      - alertmanager
+
+  slo-bff:
+    build: ../../services/slo-bff
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      TEMPO_URL: http://tempo:3200
+      LOKI_URL: http://loki:3100
+      GRAFANA_URL: http://localhost:3001
+      RUNBOOKS_DIR: /runbooks
+      ADDR: ":9090"
+    volumes:
+      - ../../docs/runbooks:/runbooks:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - prometheus
+
+  frontend:
+    build: ../../frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - slo-bff
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - ../../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
+  k6:
+    image: grafana/k6:latest
+    command: ["run", "/scripts/orders-load.js"]
+    environment:
+      ORDERS_URL: http://orders-api:8080
+    volumes:
+      - ../../load/k6:/scripts:ro
+    depends_on:
+      - orders-api
+
+volumes:
+  prom-data:
+  tempo-data:
+  loki-data:

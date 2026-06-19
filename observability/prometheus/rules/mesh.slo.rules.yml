@@ -1,0 +1,76 @@
+groups:
+  - name: payments-worker-slo
+    interval: 15s
+    rules:
+      # SLI: fraction of payments processed successfully within 60s.
+      - record: slo:payments_worker:good:ratio_5m
+        expr: |
+          sum(rate(payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le=~"60(.0)?"}[5m]))
+          / sum(rate(payments_processed_total{job="payments-worker"}[5m]))
+      - record: slo:payments_worker:good:ratio_1h
+        expr: |
+          sum(rate(payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le=~"60(.0)?"}[1h]))
+          / sum(rate(payments_processed_total{job="payments-worker"}[1h]))
+      - record: slo:payments_worker:good:ratio_6h
+        expr: |
+          sum(rate(payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le=~"60(.0)?"}[6h]))
+          / sum(rate(payments_processed_total{job="payments-worker"}[6h]))
+      - record: slo:payments_worker:good:ratio_24h
+        expr: |
+          sum(rate(payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le=~"60(.0)?"}[24h]))
+          / sum(rate(payments_processed_total{job="payments-worker"}[24h]))
+      - record: slo:payments_worker:good:ratio_28d
+        expr: |
+          sum(rate(payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le=~"60(.0)?"}[28d]))
+          / sum(rate(payments_processed_total{job="payments-worker"}[28d]))
+      # Burn rate: target 99.5% => budget 0.005
+      - record: slo:payments_worker:burnrate_1h
+        expr: (1 - slo:payments_worker:good:ratio_1h) / 0.005
+      - record: slo:payments_worker:burnrate_6h
+        expr: (1 - slo:payments_worker:good:ratio_6h) / 0.005
+      - record: slo:payments_worker:burnrate_24h
+        expr: (1 - slo:payments_worker:good:ratio_24h) / 0.005
+      - record: slo:payments_worker:error_budget_remaining_ratio
+        expr: clamp_max(clamp_min(1 - ((1 - slo:payments_worker:good:ratio_28d) / 0.005), 0), 1)
+      - record: slo:payments_worker:requests_total_28d
+        expr: sum(increase(payments_processed_total{job="payments-worker"}[28d]))
+      - record: slo:payments_worker:latency_p95_seconds
+        expr: histogram_quantile(0.95, sum by (le) (rate(payments_e2e_latency_seconds_bucket{job="payments-worker"}[5m])))
+
+  - name: notification-svc-slo
+    interval: 15s
+    rules:
+      # SLI: fraction of notifications delivered successfully within 5s.
+      - record: slo:notification_svc:good:ratio_5m
+        expr: |
+          sum(rate(notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le=~"5(.0)?"}[5m]))
+          / sum(rate(notifications_delivered_total{job="notification-svc"}[5m]))
+      - record: slo:notification_svc:good:ratio_1h
+        expr: |
+          sum(rate(notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le=~"5(.0)?"}[1h]))
+          / sum(rate(notifications_delivered_total{job="notification-svc"}[1h]))
+      - record: slo:notification_svc:good:ratio_6h
+        expr: |
+          sum(rate(notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le=~"5(.0)?"}[6h]))
+          / sum(rate(notifications_delivered_total{job="notification-svc"}[6h]))
+      - record: slo:notification_svc:good:ratio_24h
+        expr: |
+          sum(rate(notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le=~"5(.0)?"}[24h]))
+          / sum(rate(notifications_delivered_total{job="notification-svc"}[24h]))
+      - record: slo:notification_svc:good:ratio_28d
+        expr: |
+          sum(rate(notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le=~"5(.0)?"}[28d]))
+          / sum(rate(notifications_delivered_total{job="notification-svc"}[28d]))
+      # Burn rate: target 99% => budget 0.01
+      - record: slo:notification_svc:burnrate_1h
+        expr: (1 - slo:notification_svc:good:ratio_1h) / 0.01
+      - record: slo:notification_svc:burnrate_6h
+        expr: (1 - slo:notification_svc:good:ratio_6h) / 0.01
+      - record: slo:notification_svc:burnrate_24h
+        expr: (1 - slo:notification_svc:good:ratio_24h) / 0.01
+      - record: slo:notification_svc:error_budget_remaining_ratio
+        expr: clamp_max(clamp_min(1 - ((1 - slo:notification_svc:good:ratio_28d) / 0.01), 0), 1)
+      - record: slo:notification_svc:requests_total_28d
+        expr: sum(increase(notifications_delivered_total{job="notification-svc"}[28d]))
+      - record: slo:notification_svc:latency_p95_seconds
+        expr: histogram_quantile(0.95, sum by (le) (rate(notification_delivery_latency_seconds_bucket{job="notification-svc"}[5m])))

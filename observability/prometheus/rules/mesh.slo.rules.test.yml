@@ -1,0 +1,37 @@
+rule_files:
+  - mesh.slo.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # payments-worker: 95/s succeed within 60s out of 100/s total => ratio 0.95
+  - interval: 1m
+    input_series:
+      - series: 'payments_e2e_latency_seconds_bucket{job="payments-worker",status="success",le="60"}'
+        values: '0+5700x180'
+      - series: 'payments_processed_total{job="payments-worker",status="success"}'
+        values: '0+5700x180'
+      - series: 'payments_processed_total{job="payments-worker",status="failure"}'
+        values: '0+300x180'
+    promql_expr_test:
+      - expr: slo:payments_worker:good:ratio_1h
+        eval_time: 120m
+        exp_samples:
+          - labels: 'slo:payments_worker:good:ratio_1h'
+            value: 0.95
+
+  # notification-svc: 99/s delivered within 5s out of 100/s total => ratio 0.99
+  - interval: 1m
+    input_series:
+      - series: 'notification_delivery_latency_seconds_bucket{job="notification-svc",status="success",le="5"}'
+        values: '0+5940x180'
+      - series: 'notifications_delivered_total{job="notification-svc",status="success"}'
+        values: '0+5940x180'
+      - series: 'notifications_delivered_total{job="notification-svc",status="failure"}'
+        values: '0+60x180'
+    promql_expr_test:
+      - expr: slo:notification_svc:good:ratio_1h
+        eval_time: 120m
+        exp_samples:
+          - labels: 'slo:notification_svc:good:ratio_1h'
+            value: 0.99

@@ -1,0 +1,78 @@
+groups:
+  - name: slo-burn-alerts
+    rules:
+      # Fast burn: >2% of the 28d budget in 1h  => burn rate > 13.44. Page.
+      - alert: FastBurn
+        expr: slo:orders_api:burnrate_1h > 13.44
+        for: 2m
+        labels: { severity: page, service: orders-api }
+        annotations:
+          summary: "orders-api fast error-budget burn"
+          description: "orders-api burning >2% of its 28d budget per hour (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/fast-burn.md"
+      - alert: FastBurn
+        expr: slo:payments_worker:burnrate_1h > 13.44
+        for: 2m
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "payments-worker fast error-budget burn"
+          description: "payments-worker burning >2% of its 28d budget per hour (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/fast-burn.md"
+      - alert: FastBurn
+        expr: slo:notification_svc:burnrate_1h > 13.44
+        for: 2m
+        labels: { severity: page, service: notification-svc }
+        annotations:
+          summary: "notification-svc fast error-budget burn"
+          description: "notification-svc burning >2% of its 28d budget per hour (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/fast-burn.md"
+
+      # Slow burn: >10% of the 28d budget in 6h => burn rate > 11.2. Ticket.
+      - alert: SlowBurn
+        expr: slo:orders_api:burnrate_6h > 11.2
+        for: 15m
+        labels: { severity: ticket, service: orders-api }
+        annotations:
+          summary: "orders-api slow error-budget burn"
+          description: "orders-api burning >10% of its 28d budget over 6h (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/slow-burn.md"
+      - alert: SlowBurn
+        expr: slo:payments_worker:burnrate_6h > 11.2
+        for: 15m
+        labels: { severity: ticket, service: payments-worker }
+        annotations:
+          summary: "payments-worker slow error-budget burn"
+          description: "payments-worker burning >10% of its 28d budget over 6h (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/slow-burn.md"
+      - alert: SlowBurn
+        expr: slo:notification_svc:burnrate_6h > 11.2
+        for: 15m
+        labels: { severity: ticket, service: notification-svc }
+        annotations:
+          summary: "notification-svc slow error-budget burn"
+          description: "notification-svc burning >10% of its 28d budget over 6h (rate {{ $value | printf \"%.1f\" }}x)."
+          runbook_url: "docs/runbooks/slow-burn.md"
+
+  - name: liveness-alerts
+    rules:
+      # Service down: Prometheus scrape liveness fails for 2m. Page.
+      - alert: ServiceDown
+        expr: up{job=~"orders-api|payments-worker|notification-svc"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "{{ $labels.job }} has failed its health scrape for >2m."
+          runbook_url: "docs/runbooks/service-down.md"
+
+  - name: capacity-alerts
+    rules:
+      # Disk space: any container's filesystem >90% full. Warn.
+      - alert: DiskSpaceLow
+        expr: max by (name) (container_fs_usage_bytes / container_fs_limit_bytes) > 0.9
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "{{ $labels.name }} disk >90% full"
+          description: "Container {{ $labels.name }} filesystem usage is {{ $value | humanizePercentage }}."
+          runbook_url: "docs/runbooks/disk-space.md"

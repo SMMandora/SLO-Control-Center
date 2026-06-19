@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k6
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: k6 } }
+  template:
+    metadata: { labels: { app: k6 } }
+    spec:
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          args: ["run", "/scripts/orders-load.js"]
+          env:
+            - { name: ORDERS_URL, value: "http://orders-api:8080" }
+          volumeMounts:
+            - { name: script, mountPath: /scripts }
+      volumes:
+        - name: script
+          configMap: { name: k6-script }

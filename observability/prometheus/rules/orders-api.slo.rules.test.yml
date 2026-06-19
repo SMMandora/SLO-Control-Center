@@ -1,0 +1,26 @@
+rule_files:
+  - orders-api.slo.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # 99 good requests/sec (5940/min) and 1 error/sec (60/min) over 3h, so the
+      # [1h] and [5m] windows at eval 120m are fully covered by linear data.
+      # SLI = 99/(99+1) = 0.99.
+      - series: 'http_requests_total{job="orders-api",status="200"}'
+        values: '0+5940x180'
+      - series: 'http_requests_total{job="orders-api",status="500"}'
+        values: '0+60x180'
+    promql_expr_test:
+      - expr: slo:orders_api:availability:ratio_1h
+        eval_time: 120m
+        exp_samples:
+          - labels: 'slo:orders_api:availability:ratio_1h'
+            value: 0.99
+      - expr: slo:orders_api:availability:ratio_5m
+        eval_time: 120m
+        exp_samples:
+          - labels: 'slo:orders_api:availability:ratio_5m'
+            value: 0.99
